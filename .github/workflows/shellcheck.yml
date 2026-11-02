@@ -1,0 +1,22 @@
+# Run ShellCheck 0.10.0 over every shell file in the repository.
+name: ShellCheck
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shellcheck:
+    name: ShellCheck 0.10.0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck 0.10.0
+        run: python3 -m pip install --user shellcheck-py==0.10.0.1
+
+      - name: Run ShellCheck
+        run: |
+          shellcheck --version
+          find bin dev tests -name '*.sh' -print0 \
+            | xargs -0 shellcheck --shell=bash -x -P .

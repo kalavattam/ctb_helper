@@ -1,0 +1,3 @@
+# Check out text with LF line endings on every platform, including Windows,
+# where CRLF line endings would break the shell scripts under Git Bash.
+* text=auto eol=lf

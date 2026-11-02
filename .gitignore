@@ -1,0 +1,11 @@
+# Keep generated test outputs in one repository-root artifact boundary.
+/artifacts/
+
+# Track only the fixture recipe and its documentation; 'make.sh' generates the
+# rest.
+/tests/fixtures/*/*
+!/tests/fixtures/*/README.md
+!/tests/fixtures/*/make.sh
+
+# Ignore macOS Finder metadata.
+.DS_Store

@@ -1,0 +1,70 @@
+# Run the ctb_helper test suite across Bash versions, operating systems, and
+# command-line tool families (BSD, GNU, and BusyBox). ShellCheck runs
+# separately in 'shellcheck.yml'.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  host:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS, system Bash 3.2, BSD tools
+            os: macos-latest
+            bash: /bin/bash
+          - name: macOS, Homebrew Bash 5, BSD tools
+            os: macos-latest
+            bash: homebrew
+          - name: Ubuntu, Bash 5, GNU tools
+            os: ubuntu-latest
+            bash: bash
+          - name: Windows, Git Bash
+            os: windows-latest
+            bash: bash
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install non-Bash shells for the shell-guard test
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh ksh mksh busybox
+
+      - name: Install Homebrew Bash
+        if: matrix.bash == 'homebrew'
+        run: brew install bash
+
+      - name: Run tests
+        run: |
+          if [ "${{ matrix.bash }}" = homebrew ]; then
+            bash_under_test="$(brew --prefix)/bin/bash"
+          else
+            bash_under_test="$(command -v "${{ matrix.bash }}")"
+          fi
+          "${bash_under_test}" tests/run_tests.sh
+
+  container:
+    name: Docker bash:${{ matrix.version }}, BusyBox tools
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["3.2", "4.4", "5"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          docker run --rm \
+            -v "${PWD}:/repo" -w /repo \
+            "bash:${{ matrix.version }}" \
+            bash tests/run_tests.sh
