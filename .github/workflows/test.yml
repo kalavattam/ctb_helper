@@ -31,7 +31,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install non-Bash shells for the shell-guard test
         if: runner.os == 'Linux'
@@ -60,7 +60,7 @@ jobs:
       matrix:
         version: ["3.2", "4.4", "5"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run tests
         run: |

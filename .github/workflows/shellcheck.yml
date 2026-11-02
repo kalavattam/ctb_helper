@@ -10,7 +10,7 @@ jobs:
     name: ShellCheck 0.10.0
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install ShellCheck 0.10.0
         run: python3 -m pip install --user shellcheck-py==0.10.0.1
