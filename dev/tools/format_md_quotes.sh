@@ -50,9 +50,9 @@ function help_format_md_quotes() {
     cat >&2 << EOM
 Usage
 -----
-  format_md_quotes.sh \\
-    [--help] \\
-    [--write] \\
+  format_md_quotes.sh
+    [--help]
+    [--write]
     <file> [<file> ...]
 
   Find straight quotes in Markdown prose and, with '--write', convert them to curly quotes.

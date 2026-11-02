@@ -39,21 +39,21 @@ function help_ctb() {
     cat >&2 << EOM
 Usage
 -----
-  ctb_helper.sh \\
-    start \\
-    [--help] \\
-    [--lock <int> | --until <time> | --password <str>] \\
+  ctb_helper.sh
+    start
+    [--help]
+    [--lock <int> | --until <time> | --password <str>]
     <name> [<name> ...]
 
-  ctb_helper.sh \\
-    stop \\
-    [--help] \\
+  ctb_helper.sh
+    stop
+    [--help]
     <name> [<name> ...]
 
-  ctb_helper.sh \\
+  ctb_helper.sh
     list
 
-  ctb_helper.sh \\
+  ctb_helper.sh
     edit
 
   Start or stop groups of Cold Turkey Blocker blocks by preset or block name.
