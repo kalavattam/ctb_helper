@@ -1,6 +1,6 @@
 
-# ctb_helper test fixtures
-These fixtures let the contract tests run `ctb_helper.sh` without Cold Turkey, a real clock, macOS notifications, or an interactive editor. They are presets files and command stubs that `make.sh` writes from literal text, so regeneration is deterministic and needs only Bash 3.2 or newer.
+# `ctb_helper` test fixtures
+These fixtures let the contract tests run `ctb_helper.sh` without Cold Turkey or its settings, a real clock, real waits, macOS notifications, or an interactive editor. They are presets files and command stubs that `make.sh` writes from literal text, so regeneration is deterministic and needs only Bash 3.2 or newer.
 
 Regenerate the fixtures from the repository root with:
 ```bash
@@ -21,10 +21,12 @@ Generated presets files:
 - `presets/comments_only.txt`: comments and blank lines but no presets.
 
 Generated command stubs:
-- `tool/cold_turkey`: appends each call’s arguments to the file named by `CTB_FAKE_LOG` and fails for any block named in the colon-separated list `CTB_FAKE_FAIL`.
+- `tool/cold_turkey`: appends each call’s arguments to the file named by `CTB_FAKE_LOG`, prints a blank line as Cold Turkey does, and fails for any block named in the colon-separated list `CTB_FAKE_FAIL`. It records the state that each `-start` or `-stop` leaves a block in, `on` or `off`, in the file named by `CTB_FAKE_STATE`; a block named in `CTB_FAKE_MISSING` is never recorded, and a command for a block named in `CTB_FAKE_DROP` is lost, which leaves the block in the other state.
 - `tool/date`: answers `date '+%H %M'` with `CTB_FAKE_NOW` and fails on any other call.
 - `tool/osascript`: appends its arguments to the file named by `CTB_FAKE_OSA_LOG`.
 - `tool/editor`: appends its arguments to the file named by `CTB_FAKE_EDITOR_LOG`.
+- `tool/sleep`: appends its arguments to the file named by `CTB_FAKE_SLEEP_LOG` instead of waiting.
+- `tool/sqlite3`: prints the block states in `CTB_FAKE_STATE` in the encoded form that Cold Turkey stores its settings in, requires `-readonly` as its first argument, and fails when `CTB_FAKE_DB_FAIL` is set.
 
 <br />
 
@@ -33,4 +35,5 @@ Generated command stubs:
 - `tests/contract/interfaces/test_dispatch.sh` checks the exact calls to the Cold Turkey stub and the notification text sent to the `osascript` stub.
 - `tests/contract/interfaces/test_until.sh` fixes the clock with the `date` stub.
 - `tests/contract/interfaces/test_edit.sh` opens the editor stub.
+- `tests/contract/interfaces/test_confirm.sh` checks the pauses recorded by the `sleep` stub and the confirmation of block states through the `sqlite3` stub.
 - Every contract test uses the Cold Turkey stub through `CTB_BIN`.

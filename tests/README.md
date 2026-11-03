@@ -50,7 +50,7 @@ bash tests/fixtures/ctb_helper/make.sh
 bash tests/fixtures/format_md_quotes/make.sh
 ```
 
-Every test puts the stubs first on `PATH` and sets `CTB_BIN` to the Cold Turkey stub, so the suite never runs a real Cold Turkey install, shows a real notification, or opens a real editor.
+Every test puts the stubs first on `PATH`, sets `CTB_BIN` to the Cold Turkey stub, and sets `CTB_DB` to an empty stand-in file that only the `sqlite3` stub reads, so the suite never runs a real Cold Turkey install, reads its settings, shows a real notification, opens a real editor, or waits.
 
 <br />
 

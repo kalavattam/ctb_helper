@@ -34,6 +34,12 @@ set -euo pipefail
 # Set the presets file, which 'CTB_PRESETS' may override.
 readonly PRESETS_FILE="${CTB_PRESETS:-${HOME}/.ctb_presets}"
 
+# Set the pause between Cold Turkey calls in seconds, which 'CTB_DELAY' may
+# override, and Cold Turkey's settings database, which 'CTB_DB' may override.
+readonly DELAY_SEC="${CTB_DELAY:-2}"
+readonly DB_FILE_MAC="/Library/Application Support/Cold Turkey/data-app.db"
+readonly DB_FILE="${CTB_DB:-${DB_FILE_MAC}}"
+
 
 function help_ctb() {
     cat >&2 << EOM
@@ -87,6 +93,7 @@ Notes
   Runtime requirements:
     - bash >= 3.2
     - Cold Turkey Blocker; locking with '--lock', '--until', or '--password' requires Cold Turkey Pro
+    - sqlite3 and perl, to confirm that blocks started or stopped; both ship with macOS
 
   - Presets are read from '${PRESETS_FILE}', one per line, in the form 'name = Block One, Block Two'.
     + Lines that begin with '#' are comments.
@@ -95,7 +102,13 @@ Notes
   - Set 'CTB_PRESETS' to use another presets file, and set 'CTB_BIN' to the Cold Turkey executable when it is not in a default install location.
   - Specify at most one of '--lock', '--until', and '--password'.
   - A locked block cannot be stopped early.
+  - Cold Turkey ends a lock at the start of a clock minute, so a lock of N minutes lasts between N - 1 and N minutes, and a lock of 1 minute can end at once.
+  - Cold Turkey can drop a command that arrives too soon after another, so 'start' and 'stop' wait 'CTB_DELAY' seconds (default: 2) between Cold Turkey calls.
+  - After the calls, 'start' and 'stop' read Cold Turkey's settings to confirm that each block turned on or off, and report each block that did not.
+    + Set 'CTB_DB' when the settings database is not at '${DB_FILE_MAC}'.
+    + When the settings cannot be read, the blocks are reported as started or stopped with a note that they were not confirmed.
   - A password given with '--password' is visible in shell history and the process list.
+  - On a terminal, 'start' and 'stop' show their progress with a spinner on stderr, then how long they took.
   - On macOS, 'start' shows a desktop notification that lists the blocks that started.
 
 Examples
@@ -218,6 +231,13 @@ function init_globals() {
     arr_block=()
     arr_preset_nam=()
     arr_preset_csv=()
+
+    # 'confirm_blocks' sorts the blocks in 'arr_sent' into 'arr_ok',
+    # 'arr_miss', and 'arr_unknown'.
+    arr_sent=()
+    arr_ok=()
+    arr_miss=()
+    arr_unknown=()
 }
 
 
@@ -365,6 +385,13 @@ function validate_args() {
             return 1
         fi
         return 0
+    fi
+
+    if [[ ! "${DELAY_SEC}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+        echo_err \
+            "'CTB_DELAY' must be a number of seconds, such as '2' or '0.5':" \
+            "'${DELAY_SEC}'."
+        return 1
     fi
 
     if [[ "${#arr_nam[@]}" -eq 0 ]]; then
@@ -633,22 +660,236 @@ function notify_desktop() {
 }
 
 
+# On a terminal, replace the status line on stderr with 'msg'.
+function show_status() {
+    local msg="${1}"
+
+    if [[ -t 2 ]]; then
+        printf '\r\033[K%s' "${msg}" >&2
+    fi
+}
+
+
+# On a terminal, erase the status line on stderr.
+function clear_status() {
+    if [[ -t 2 ]]; then
+        printf '\r\033[K' >&2
+    fi
+}
+
+
+# Wait 'DELAY_SEC' seconds before the next Cold Turkey call or settings read.
+# On a terminal, spin beside status message 'msg' on stderr while waiting.
+function pause_ct() {
+    local msg="${1}"
+    local frames="|/-\\"
+    local pid
+    local idx=0
+
+    if [[ "${DELAY_SEC}" =~ ^0+([.]0+)?$ ]]; then
+        return 0
+    fi
+
+    if [[ ! -t 2 ]]; then
+        sleep "${DELAY_SEC}"
+        return 0
+    fi
+
+    sleep "${DELAY_SEC}" &
+    pid=$!
+    while kill -0 "${pid}" 2> /dev/null; do
+        show_status "${frames:idx%4:1} ${msg}"
+        idx=$(( idx + 1 ))
+        sleep 0.1
+    done
+    wait "${pid}"
+}
+
+
+# On a terminal, print on stderr how long the command took since 'sec_start',
+# an earlier value of 'SECONDS'.
+function report_elapsed() {
+    local sec_start="${1}"
+    local sec=$(( SECONDS - sec_start ))
+
+    if [[ ! -t 2 ]]; then
+        return 0
+    fi
+
+    if (( sec >= 60 )); then
+        printf 'Took %d min %d s.\n' $(( sec / 60 )) $(( sec % 60 )) >&2
+    else
+        printf 'Took %d s.\n' "${sec}" >&2
+    fi
+}
+
+
+# Print 'verb' and the number of blocks that follow 'desc', then 'desc' when it
+# is set, and then each block on its own indented line. Print nothing when no
+# blocks follow.
+function print_summary() {
+    local verb="${1}"
+    local desc="${2}"
+    local noun="blocks"
+    local block
+
+    shift 2
+    if [[ "$#" -eq 0 ]]; then
+        return 0
+    fi
+
+    if [[ "$#" -eq 1 ]]; then
+        noun="block"
+    fi
+
+    echo "${verb} $# ${noun}${desc:+, ${desc}}:"
+    for block in "$@"; do
+        echo "  ${block}"
+    done
+}
+
+
+# Print Cold Turkey's state for each block, one block per line: 'on' or 'off',
+# a tab, and the block name. Cold Turkey keeps its settings in database
+# 'DB_FILE' as 'CTB17' and the hexadecimal digits of JSON whose bytes are each
+# shifted up by 17. Return 1 when the settings cannot be read.
+function read_block_states() {
+    local -r query="SELECT value FROM settings WHERE key = 'settings';"
+
+    # The Perl program avoids single quotes so that it can sit inside one.
+    # shellcheck disable=SC2016
+    local -r decode='
+        my $val = do { local $/; <STDIN> };
+        defined $val or exit 1;
+        $val =~ s/\s+\z//;
+        $val =~ s/\ACTB17// or exit 1;
+        $val =~ /\A(?:[0-9A-Fa-f]{2})+\z/ or exit 1;
+        my $raw = join q(), map { chr((ord($_) - 17) % 256) }
+            split //, pack(q(H*), $val);
+        my $set = eval { JSON::PP->new->utf8->decode($raw) };
+        ref $set eq q(HASH) && ref $set->{blocks} eq q(HASH) or exit 1;
+        binmode STDOUT, q(:encoding(UTF-8));
+        for my $nam (sort keys %{ $set->{blocks} }) {
+            my $on = $set->{blocks}{$nam}{enabled};
+            $on = ref $on ? $on : (defined $on && $on eq q(true));
+            print $on ? q(on) : q(off), "\t", $nam, "\n";
+        }
+    '
+
+    if [[ ! -r "${DB_FILE}" ]]; then
+        return 1
+    fi
+
+    if \
+        ! command -v sqlite3 > /dev/null 2>&1 \
+            || ! command -v perl > /dev/null 2>&1
+    then
+        return 1
+    fi
+
+    # Open the database read-only so that reading it can never change Cold
+    # Turkey's settings.
+    sqlite3 -readonly "${DB_FILE}" "${query}" 2> /dev/null \
+        | perl -MJSON::PP -e "${decode}" 2> /dev/null
+}
+
+
+# Sort the blocks in 'arr_sent' by whether Cold Turkey shows them in state
+# 'want', 'on' or 'off': into 'arr_ok' when they are, 'arr_miss' when they are
+# in the other state, and 'arr_unknown' when Cold Turkey has no such block.
+# Read the settings up to three times, 'DELAY_SEC' apart, while any block is in
+# the other state. Return 1 when the settings cannot be read.
+function confirm_blocks() {
+    local want="${1}"
+    local nl=$'\n'
+    local tab=$'\t'
+    local states
+    local block
+    local try
+
+    for (( try = 1; try <= 3; try++ )); do
+        pause_ct "Checking Cold Turkey's settings"
+
+        if \
+            ! states="$(read_block_states)"
+        then
+            clear_status
+            return 1
+        fi
+
+        arr_ok=()
+        arr_miss=()
+        arr_unknown=()
+        for block in "${arr_sent[@]}"; do
+            case "${nl}${states}${nl}" in
+                *"${nl}${want}${tab}${block}${nl}"*)
+                    arr_ok+=( "${block}" )
+                    ;;
+
+                *"${tab}${block}${nl}"*)
+                    arr_miss+=( "${block}" )
+                    ;;
+
+                *)
+                    arr_unknown+=( "${block}" )
+                    ;;
+            esac
+        done
+
+        if [[ "${#arr_miss[@]}" -eq 0 ]]; then
+            clear_status
+            return 0
+        fi
+    done
+
+    clear_status
+}
+
+
+# Report, on behalf of the calling function, each block in 'arr_unknown' as
+# missing from Cold Turkey and each block in 'arr_miss' with message 'msg'.
+function report_unconfirmed() {
+    local msg="${1}"
+    local block
+
+    for block in ${arr_unknown[@]+"${arr_unknown[@]}"}; do
+        echo_err_func "${FUNCNAME[1]}" \
+            "Cold Turkey has no block named '${block}'."
+    done
+
+    for block in ${arr_miss[@]+"${arr_miss[@]}"}; do
+        echo_err_func "${FUNCNAME[1]}" \
+            "block '${block}' ${msg}."
+    done
+}
+
+
 # Start each block in 'arr_block' with the lock that 'lock_min' or 'password'
-# selects, then notify which blocks started.
+# selects, waiting 'DELAY_SEC' seconds between Cold Turkey calls. Then confirm
+# in Cold Turkey's settings that each block is on, print a summary, and notify
+# which blocks started.
 function start_blocks() {
     local fil_bin
     local block
+    local idx
+    local desc=""
     local desc_lock=""
     local message
+    local n_fail=0
+    local sec_start="${SECONDS}"
     local -a arr_opt_lock=()
     local -a arr_started=()
-    local -a arr_failed=()
 
     if [[ -n "${lock_min}" ]]; then
         arr_opt_lock=( -lock "${lock_min}" )
+        desc="locked for ${lock_min} min"
         desc_lock=" (locked ${lock_min} min)"
+        if [[ -n "${time_until}" ]]; then
+            desc="locked until ${time_until}"
+        fi
     elif [[ -n "${password}" ]]; then
         arr_opt_lock=( -password "${password}" )
+        desc="password-locked"
         desc_lock=" (password-locked)"
     fi
 
@@ -658,35 +899,68 @@ function start_blocks() {
         return 1
     fi
 
-    for block in "${arr_block[@]}"; do
+    for (( idx = 0; idx < ${#arr_block[@]}; idx++ )); do
+        block="${arr_block[idx]}"
+        if (( idx > 0 )); then
+            pause_ct "Starting blocks: ${idx} of ${#arr_block[@]} sent"
+        fi
+
+        # Discard Cold Turkey's output, which is only blank lines; the settings
+        # show whether the block started.
+        show_status "| Starting blocks: ${idx} of ${#arr_block[@]} sent"
         if \
             "${fil_bin}" -start "${block}" \
-                ${arr_opt_lock[@]+"${arr_opt_lock[@]}"}
+                ${arr_opt_lock[@]+"${arr_opt_lock[@]}"} > /dev/null 2>&1
         then
-            echo "started: ${block}${desc_lock}"
-            arr_started+=( "${block}" )
+            arr_sent+=( "${block}" )
         else
+            clear_status
             echo_err "Cold Turkey failed to start block '${block}'."
-            arr_failed+=( "${block}" )
+            n_fail=$(( n_fail + 1 ))
         fi
     done
+    clear_status
+
+    if [[ "${#arr_sent[@]}" -gt 0 ]]; then
+        if \
+            confirm_blocks on
+        then
+            arr_started=( ${arr_ok[@]+"${arr_ok[@]}"} )
+            report_unconfirmed "did not start; run 'start' again for it"
+            n_fail=$(( n_fail + ${#arr_miss[@]} + ${#arr_unknown[@]} ))
+        else
+            echo_note \
+                "could not read Cold Turkey's settings to confirm that the" \
+                "blocks started."
+            arr_started=( "${arr_sent[@]}" )
+        fi
+    fi
+
+    print_summary "Started" "${desc}" ${arr_started[@]+"${arr_started[@]}"}
 
     if [[ "${#arr_started[@]}" -gt 0 ]]; then
         printf -v message '%s, ' "${arr_started[@]}"
         notify_desktop "Cold Turkey" "Started: ${message%, }${desc_lock}"
     fi
 
-    if [[ "${#arr_failed[@]}" -gt 0 ]]; then
+    report_elapsed "${sec_start}"
+
+    if [[ "${n_fail}" -gt 0 ]]; then
         return 1
     fi
 }
 
 
-# Stop each block in 'arr_block'.
+# Stop each block in 'arr_block', waiting 'DELAY_SEC' seconds between Cold
+# Turkey calls. Then confirm in Cold Turkey's settings that each block is off,
+# and print a summary.
 function stop_blocks() {
     local fil_bin
     local block
-    local n_failed=0
+    local idx
+    local n_fail=0
+    local sec_start="${SECONDS}"
+    local -a arr_stopped=()
 
     if \
         ! fil_bin="$(find_ct_bin)"
@@ -694,20 +968,46 @@ function stop_blocks() {
         return 1
     fi
 
-    for block in "${arr_block[@]}"; do
+    for (( idx = 0; idx < ${#arr_block[@]}; idx++ )); do
+        block="${arr_block[idx]}"
+        if (( idx > 0 )); then
+            pause_ct "Stopping blocks: ${idx} of ${#arr_block[@]} sent"
+        fi
+
+        show_status "| Stopping blocks: ${idx} of ${#arr_block[@]} sent"
         if \
-            "${fil_bin}" -stop "${block}"
+            "${fil_bin}" -stop "${block}" > /dev/null 2>&1
         then
-            echo "stopped: ${block}"
+            arr_sent+=( "${block}" )
         else
+            clear_status
             echo_err \
                 "Cold Turkey failed to stop block '${block}'; it may be" \
                 "locked."
-            n_failed=$(( n_failed + 1 ))
+            n_fail=$(( n_fail + 1 ))
         fi
     done
+    clear_status
 
-    if [[ "${n_failed}" -gt 0 ]]; then
+    if [[ "${#arr_sent[@]}" -gt 0 ]]; then
+        if \
+            confirm_blocks off
+        then
+            arr_stopped=( ${arr_ok[@]+"${arr_ok[@]}"} )
+            report_unconfirmed "is still on; it may be locked"
+            n_fail=$(( n_fail + ${#arr_miss[@]} + ${#arr_unknown[@]} ))
+        else
+            echo_note \
+                "could not read Cold Turkey's settings to confirm that the" \
+                "blocks stopped."
+            arr_stopped=( "${arr_sent[@]}" )
+        fi
+    fi
+
+    print_summary "Stopped" "" ${arr_stopped[@]+"${arr_stopped[@]}"}
+    report_elapsed "${sec_start}"
+
+    if [[ "${n_fail}" -gt 0 ]]; then
         return 1
     fi
 }

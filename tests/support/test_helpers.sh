@@ -135,12 +135,13 @@ function fail_precondition() {
 
 # Prepare the environment shared by every test: check the generated fixtures,
 # create an empty per-test scratch directory, and put the stubs first on
-# 'PATH'. 'CTB_BIN' always names the Cold Turkey stub, so no test can reach a
-# real Cold Turkey install.
+# 'PATH'. 'CTB_BIN' always names the Cold Turkey stub, and 'CTB_DB' names an
+# empty stand-in file that only the 'sqlite3' stub reads, so no test can reach
+# a real Cold Turkey install or its settings.
 function setup_test_env() {
     local nam_test="${TEST_NAME//[^A-Za-z0-9_.-]/_}"
 
-    if [[ ! -x "${DIR_TOOL}/cold_turkey" ]]; then
+    if [[ ! -x "${DIR_TOOL}/sqlite3" ]]; then
         fail_precondition \
             "fixtures are missing; run 'bash tests/run_tests.sh' or" \
             "'bash tests/fixtures/ctb_helper/make.sh'."
@@ -155,17 +156,23 @@ function setup_test_env() {
     CTB_FAKE_LOG="${TEST_DIR_CASE}/cold_turkey.log"
     CTB_FAKE_OSA_LOG="${TEST_DIR_CASE}/osascript.log"
     CTB_FAKE_EDITOR_LOG="${TEST_DIR_CASE}/editor.log"
+    CTB_FAKE_SLEEP_LOG="${TEST_DIR_CASE}/sleep.log"
+    CTB_FAKE_STATE="${TEST_DIR_CASE}/state.tsv"
     CTB_PRESETS="${DIR_PRESETS}/basic.txt"
+    CTB_DB="${TEST_DIR_CASE}/data-app.db"
+    : > "${CTB_DB}"
     export PATH CTB_BIN CTB_FAKE_LOG CTB_FAKE_OSA_LOG CTB_FAKE_EDITOR_LOG
-    export CTB_PRESETS
+    export CTB_FAKE_SLEEP_LOG CTB_FAKE_STATE CTB_PRESETS CTB_DB
 
-    unset CTB_FAKE_FAIL CTB_FAKE_NOW VISUAL EDITOR
+    unset CTB_FAKE_FAIL CTB_FAKE_DROP CTB_FAKE_MISSING CTB_FAKE_DB_FAIL
+    unset CTB_FAKE_NOW CTB_DELAY VISUAL EDITOR
 }
 
 
 # Run 'ctb_helper.sh' with arguments as case 'nam', after clearing the stub
-# logs. Write stdout to 'fil_out' and stderr to 'fil_err' under the per-test
-# scratch directory, and set the exit status in 'ctb_status'.
+# logs and the block states. Write stdout to 'fil_out' and stderr to 'fil_err'
+# under the per-test scratch directory, and set the exit status in
+# 'ctb_status'.
 function run_ctb() {
     local nam="${1}"
 
@@ -176,6 +183,8 @@ function run_ctb() {
     : > "${CTB_FAKE_LOG}"
     : > "${CTB_FAKE_OSA_LOG}"
     : > "${CTB_FAKE_EDITOR_LOG}"
+    : > "${CTB_FAKE_SLEEP_LOG}"
+    : > "${CTB_FAKE_STATE}"
 
     if \
         "${TEST_BASH}" "${CTB_HELPER}" "$@" > "${fil_out}" 2> "${fil_err}"

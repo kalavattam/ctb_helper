@@ -36,8 +36,9 @@ assert_lines \
 assert_lines \
     "${fil_out}" \
     "start_lock: stdout" \
-    "started: Social Media (locked 90 min)" \
-    "started: News (locked 90 min)"
+    "Started 2 blocks, locked for 90 min:" \
+    "  Social Media" \
+    "  News"
 
 assert_lines \
     "${CTB_FAKE_OSA_LOG}" \
@@ -58,7 +59,8 @@ assert_lines \
 assert_lines \
     "${fil_out}" \
     "start_password: stdout" \
-    "started: Reddit (password-locked)"
+    "Started 1 block, password-locked:" \
+    "  Reddit"
 
 run_ctb start_unlocked start Reddit
 assert_status 0 "start_unlocked"
@@ -67,7 +69,11 @@ assert_lines \
     "start_unlocked: Cold Turkey call without lock options" \
     "[-start][Reddit]"
 
-assert_lines "${fil_out}" "start_unlocked: stdout" "started: Reddit"
+assert_lines \
+    "${fil_out}" \
+    "start_unlocked: stdout" \
+    "Started 1 block:" \
+    "  Reddit"
 
 print_section "stopping blocks"
 run_ctb stop_preset stop focus
@@ -81,8 +87,9 @@ assert_lines \
 assert_lines \
     "${fil_out}" \
     "stop_preset: stdout" \
-    "stopped: Social Media" \
-    "stopped: News"
+    "Stopped 2 blocks:" \
+    "  Social Media" \
+    "  News"
 
 assert_lines "${CTB_FAKE_OSA_LOG}" "stop_preset: no notification"
 
@@ -101,8 +108,9 @@ assert_lines \
 assert_lines \
     "${fil_out}" \
     "start_one_fails: success reported only for started blocks" \
-    "started: Social Media" \
-    "started: Reddit"
+    "Started 2 blocks:" \
+    "  Social Media" \
+    "  Reddit"
 
 assert_text_found \
     "${fil_err}" \

@@ -247,7 +247,7 @@ echo "note(run_tests.sh):" \
     "testing with Bash '${bash_version}' at '${TEST_BASH}'."
 
 # Generate each fixture set whose last-written output is missing.
-ensure_fixture ctb_helper tool/editor
+ensure_fixture ctb_helper tool/sqlite3
 ensure_fixture format_md_quotes format/expected.txt
 
 passed=0

@@ -4,7 +4,7 @@
 
 ![Bash 3.2+, tested on 3.2, 4.4, and 5][badge-bash] ![Platforms: macOS and Windows (Git Bash, WSL)][badge-platforms] ![Tools: BSD, GNU, and BusyBox][badge-tools]
 
-`ctb_helper.sh` starts and stops groups of [Cold Turkey Blocker](https://getcoldturkey.com) blocks from a Bash command line on macOS or Windows, so that one command, keyboard shortcut, or button can turn on a preset (see below). It wraps the program’s own command-line interface and adds named presets, locks that end at a given time, and a macOS notification that lists the blocks that started.
+`ctb_helper.sh` starts and stops groups of [Cold Turkey Blocker](https://getcoldturkey.com) blocks from a Bash command line on macOS or Windows, so that one command, keyboard shortcut, or button can turn on a preset (see below). It wraps the program’s own command-line interface and adds named presets, locks that end at a given time, a check that each block really started or stopped, and a macOS notification that lists the blocks that started.
 
 This project is neither affiliated with nor endorsed by Cold Turkey Software, Inc.
 
@@ -13,16 +13,26 @@ This project is neither affiliated with nor endorsed by Cold Turkey Software, In
 ## Requirements
 - Bash 3.2 or newer, which includes the Bash that ships with macOS.
 - Cold Turkey Blocker on macOS or Windows. Locking blocks from the command line requires Cold Turkey Pro.
+- `sqlite3` and `perl`, both of which ship with macOS, to confirm that blocks started or stopped. Without them, `ctb_helper.sh` still starts and stops blocks, but it can’t confirm them.
 
 <br />
 
 ## Installation
-Clone the repository and link the script onto the `PATH` under a short name such as `ctb`:
+Clone the repository and alias the script using a short name such as `ctb`:
 ```bash
 git clone https://github.com/kalavattam/ctb_helper.git ~/repos/ctb_helper
-mkdir -p ~/bin
-ln -s ~/repos/ctb_helper/bin/ctb_helper.sh ~/bin/ctb
+
+# Add an alias for this terminal session only:
+alias ctb="${HOME}/repos/ctb_helper/bin/ctb_helper.sh"
+
+# Or add it permanently to, e.g., ~/.zshrc or ~/.bashrc, matching the login
+# shell:
+rc="${HOME}/.${SHELL##*/}rc"
+grep -qs 'alias ctb=' "${rc}" \
+    || echo 'alias ctb="${HOME}/repos/ctb_helper/bin/ctb_helper.sh"' >> "${rc}"
 ```
+
+The permanent alias takes effect in new terminal windows; run `source "${rc}"` to use it right away. When Bash is the login shell on macOS (the default before macOS 10.15), add the alias to `~/.bash_profile` instead. In other shells, or if aliases are kept in a separate file (e.g., `~/.aliases`), add an equivalent alias by hand. Aliases work only in interactive shells, so launchers and scripts need the script’s full path (see “[[r]unning from a button or shortcut](#running-from-a-button-or-shortcut)” below) or a link to it in a folder on one’s `PATH`.
 
 `ctb_helper.sh` finds Cold Turkey in its default install location on macOS, under Git Bash on Windows, or under WSL. Set `CTB_BIN` to the Cold Turkey executable if it is installed somewhere else.
 
@@ -52,6 +62,17 @@ ctb help                             # Print the full help
 
 A name that matches a preset expands to that preset’s blocks; any other name is passed to Cold Turkey as a block name. A block named more than once is started or stopped once. Specify at most one of `--lock`, `--until`, and `--password`. A password given with `--password` cannot contain spaces or quotes, and it is visible in shell history and the process list.
 
+Cold Turkey can drop a command that arrives too soon after another, so `start` and `stop` wait two seconds between blocks. They then read Cold Turkey’s settings to confirm that each block turned on or off, report any block that did not as an error, and exit with status 1; running the same command again catches the blocks that were missed. On a terminal, a spinner shows the progress, and each command ends with a summary of the blocks that changed and how long it took. E.g.:
+```text
+Started 3 blocks, locked for 60 min:
+  Social Media
+  News
+  Shopping
+Took 7 s.
+```
+
+Cold Turkey ends a lock at the start of a clock minute, so a lock of 90 minutes lasts between 89 and 90 minutes, and a lock of 1 minute can end at once.
+
 <br />
 
 ### Running from a button or shortcut
@@ -65,11 +86,13 @@ Shortcuts runs commands with a minimal `PATH`, so use full paths there. A shortc
 <br />
 
 ### Configuration
-| Variable          | Purpose                                                                           |
-| :---              | :---                                                                              |
-| `CTB_PRESETS`     | Presets file to use instead of `~/.ctb_presets`.                                  |
-| `CTB_BIN`         | Cold Turkey executable to use when it is not in a default install location.       |
-| `VISUAL`/`EDITOR` | Editor that `ctb edit` opens; the value may include arguments, such as `subl -w`. |
+| Variable          | Purpose                                                                             |
+| :---              | :---                                                                                |
+| `CTB_PRESETS`     | Presets file to use instead of `~/.ctb_presets`.                                    |
+| `CTB_BIN`         | Cold Turkey executable to use when it is not in a default install location.         |
+| `CTB_DELAY`       | Seconds to wait between Cold Turkey calls (default: 2).                             |
+| `CTB_DB`          | Cold Turkey settings database to read when it is not in the macOS default location. |
+| `VISUAL`/`EDITOR` | Editor that `ctb edit` opens; the value may include arguments, such as `subl -w`.   |
 
 <br />
 
@@ -80,7 +103,7 @@ bash tests/run_tests.sh
 /bin/bash tests/run_tests.sh
 ```
 
-The tests replace Cold Turkey, `date`, `osascript`, and the editor with stubs, so they never change real blocks. [`tests/README.md`](tests/README.md) describes the suite, and [`docs/standards.md`](docs/standards.md) describes the source and documentation standards followed by the project. GitHub Actions runs the suite on macOS with the system’s default Bash 3.2 and with a Bash 5 that the job installs from Homebrew, on Ubuntu, on Windows under Git Bash, and in `bash:3.2`, `bash:4.4`, and `bash:5` containers, and it runs ShellCheck 0.10.0.
+The tests replace Cold Turkey, `date`, `osascript`, the editor, `sleep`, and `sqlite3` with stubs, so they never change or read real blocks. [`tests/README.md`](tests/README.md) describes the suite, and [`docs/standards.md`](docs/standards.md) describes the source and documentation standards followed by the project. GitHub Actions runs the suite on macOS with the system’s default Bash 3.2 and with a Bash 5 that the job installs from Homebrew, on Ubuntu, on Windows under Git Bash, and in `bash:3.2`, `bash:4.4`, and `bash:5` containers, and it runs ShellCheck 0.10.0.
 
 Markdown prose uses curly quotes rather than straight ones, as [`docs/standards.md`](docs/standards.md) describes. To find straight quotes in prose and then convert them, run:
 ```bash
@@ -96,7 +119,7 @@ bash dev/tools/format_md_quotes.sh --write README.md
 <br />
 
 ## Authorship and AI assistance attribution
-- Director, responsible author, and maintainer: Kris Alavattam.
+- Director, responsible author, and maintainer: Kris Alavattam (<i>kalavat&#8203;tam (at) g&#8203;mail (dot) c&#8203;om</i>).
 - Code, documentation, and related materials are planned, designed, developed, reviewed, revised, and maintained with AI assistance from Claude Code (Anthropic; Opus 5.5). All AI-assisted output is reviewed, edited, and approved by the author.
 
 [badge-tests]: https://github.com/kalavattam/ctb_helper/actions/workflows/test.yml/badge.svg
