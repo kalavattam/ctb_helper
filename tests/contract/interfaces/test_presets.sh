@@ -134,4 +134,27 @@ assert_lines \
     "list_without_file: example preset listed" \
     "  focus        Social Media, News"
 
+print_section "default presets file"
+home_saved="${HOME}"
+HOME="${TEST_DIR_CASE}/home"
+mkdir -p "${HOME}"
+export HOME
+unset CTB_PRESETS
+run_ctb list_default_path list
+assert_status 0 "list_default_path"
+assert_text_found \
+    "${fil_err}" \
+    "created an example presets file: '${HOME}/.ctb_presets'." \
+    "list_default_path: example file created as ~/.ctb_presets"
+
+if [[ -s "${HOME}/.ctb_presets" ]]; then
+    record_pass "list_default_path: '~/.ctb_presets' exists"
+else
+    record_fail "list_default_path: '${HOME}/.ctb_presets' was not created."
+fi
+
+HOME="${home_saved}"
+CTB_PRESETS="${DIR_PRESETS}/basic.txt"
+export HOME CTB_PRESETS
+
 finish

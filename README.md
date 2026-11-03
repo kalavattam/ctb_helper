@@ -29,7 +29,7 @@ ln -s ~/repos/ctb_helper/bin/ctb_helper.sh ~/bin/ctb
 <br />
 
 ## Presets
-A preset names a group of Cold Turkey blocks. Presets live in `~/.config/ctb/presets`, one per line:
+A preset names a group of Cold Turkey blocks. Presets live in `~/.ctb_presets`, one per line:
 ```text
 # name = Block One, Block Two, ...
 focus = Social Media, News, Shopping
@@ -50,7 +50,7 @@ ctb list                             # Print each preset and its blocks
 ctb help                             # Print the full help
 ```
 
-A name that matches a preset expands to that preset’s blocks; any other name is passed to Cold Turkey as a block name. A block named more than once is started or stopped once. Specify at most one of `--lock`, `--until`, and `--password`. A password given with `--password` is visible in shell history and the process list.
+A name that matches a preset expands to that preset’s blocks; any other name is passed to Cold Turkey as a block name. A block named more than once is started or stopped once. Specify at most one of `--lock`, `--until`, and `--password`. A password given with `--password` cannot contain spaces or quotes, and it is visible in shell history and the process list.
 
 <br />
 
@@ -67,7 +67,7 @@ Shortcuts runs commands with a minimal `PATH`, so use full paths there. A shortc
 ### Configuration
 | Variable          | Purpose                                                                           |
 | :---              | :---                                                                              |
-| `CTB_PRESETS`     | Presets file to use instead of `~/.config/ctb/presets`.                           |
+| `CTB_PRESETS`     | Presets file to use instead of `~/.ctb_presets`.                                  |
 | `CTB_BIN`         | Cold Turkey executable to use when it is not in a default install location.       |
 | `VISUAL`/`EDITOR` | Editor that `ctb edit` opens; the value may include arguments, such as `subl -w`. |
 

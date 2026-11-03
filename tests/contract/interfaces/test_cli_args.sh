@@ -137,6 +137,30 @@ check_rejected \
     ten \
     focus
 
+check_rejected \
+    password_space \
+    "error(ctb_helper.sh::validate_args): '--password' must not contain" \
+    start \
+    -p \
+    "s3cret word" \
+    focus
+
+check_rejected \
+    password_double_quote \
+    "'--password' must not contain spaces or quotes." \
+    start \
+    -p \
+    's3cret"' \
+    focus
+
+check_rejected \
+    password_single_quote \
+    "'--password' must not contain spaces or quotes." \
+    start \
+    -p \
+    "s3cret'" \
+    focus
+
 print_section "option applicability"
 check_rejected \
     stop_with_lock \

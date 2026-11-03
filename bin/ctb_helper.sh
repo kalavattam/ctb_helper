@@ -32,7 +32,7 @@ fi
 set -euo pipefail
 
 # Set the presets file, which 'CTB_PRESETS' may override.
-readonly PRESETS_FILE="${CTB_PRESETS:-${HOME}/.config/ctb/presets}"
+readonly PRESETS_FILE="${CTB_PRESETS:-${HOME}/.ctb_presets}"
 
 
 function help_ctb() {
@@ -77,7 +77,7 @@ Parameters
     Lock each started block until this clock time, given as 24-hour 'HH:MM' or 12-hour 'H:MMam' or 'H:MMpm'. A time that has already passed today means that time tomorrow. Applies only to 'start'.
 
   -p, --password : str
-    Lock each started block with this password. Applies only to 'start'.
+    Lock each started block with this password, which must not contain spaces or quotes. Applies only to 'start'.
 
   2  name : str
     One or more preset or block names. A name that matches a preset expands to that preset's blocks; any other name is passed to Cold Turkey as a block name. A block named more than once is started or stopped once.
@@ -350,6 +350,14 @@ function validate_args() {
             "'${lock_min}'."
         return 1
     fi
+
+    # Cold Turkey rejects a password that contains spaces or quotes.
+    case "${password}" in
+        *[[:space:]\"\']*)
+            echo_err "'--password' must not contain spaces or quotes."
+            return 1
+            ;;
+    esac
 
     if [[ "${cmd}" == "list" || "${cmd}" == "edit" ]]; then
         if [[ "${#arr_nam[@]}" -gt 0 ]]; then

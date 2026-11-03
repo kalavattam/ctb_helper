@@ -48,12 +48,12 @@ assert_lines \
             ' (locked 90 min)" with title "Cold Turkey"]'
     )"
 
-run_ctb start_password start -p 's3cret word' Reddit
+run_ctb start_password start -p 's3cret' Reddit
 assert_status 0 "start_password"
 assert_lines \
     "${CTB_FAKE_LOG}" \
     "start_password: Cold Turkey call" \
-    "[-start][Reddit][-password][s3cret word]"
+    "[-start][Reddit][-password][s3cret]"
 
 assert_lines \
     "${fil_out}" \
@@ -160,11 +160,11 @@ assert_lines "${CTB_FAKE_LOG}" "bin_not_executable: no Cold Turkey call"
 # never run a real Cold Turkey.
 dir_mac="/Applications/Cold Turkey Blocker.app/Contents/MacOS"
 dir_win="Program Files/Cold Turkey"
-if \
-    [[ -e "${dir_mac}/Cold Turkey Blocker" \
+if [[
+    -e "${dir_mac}/Cold Turkey Blocker" \
         || -e "/c/${dir_win}/Cold Turkey Blocker.exe" \
-        || -e "/mnt/c/${dir_win}/Cold Turkey Blocker.exe" ]]
-then
+        || -e "/mnt/c/${dir_win}/Cold Turkey Blocker.exe"
+]]; then
     record_skip "bin_not_found: Cold Turkey is installed on this host"
 else
     unset CTB_BIN
