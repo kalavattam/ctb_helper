@@ -80,6 +80,12 @@ bash tests/run_tests.sh
 
 The tests replace Cold Turkey, `date`, `osascript`, and the editor with stubs, so they never change real blocks. [`tests/README.md`](tests/README.md) describes the suite, and [`docs/standards.md`](docs/standards.md) describes the source and documentation standards followed by the project. GitHub Actions runs the suite on macOS with the system’s default Bash 3.2 and with a Bash 5 that the job installs from Homebrew, on Ubuntu, on Windows under Git Bash, and in `bash:3.2`, `bash:4.4`, and `bash:5` containers, and it runs ShellCheck 0.10.0.
 
+Markdown prose uses curly quotes rather than straight ones, as [`docs/standards.md`](docs/standards.md) describes. To find straight quotes in prose and then convert them, run:
+```bash
+bash dev/tools/format_md_quotes.sh README.md
+bash dev/tools/format_md_quotes.sh --write README.md
+```
+
 <br />
 
 ## License
