@@ -1,6 +1,8 @@
 
 # `ctb_helper`
-[![Tests](https://github.com/kalavattam/ctb_helper/actions/workflows/test.yml/badge.svg)](https://github.com/kalavattam/ctb_helper/actions/workflows/test.yml) ![Bash 3.2+](https://img.shields.io/badge/bash-3.2%2B-4EAA25?logo=gnubash&logoColor=white) ![Tested on Bash 3.2, 4.4, and 5](https://img.shields.io/badge/tested%20on%20bash-3.2%20%C2%B7%204.4%20%C2%B7%205-4EAA25) ![Platforms: macOS and Windows](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%28Git%20Bash%2C%20WSL%29-lightgrey) ![Tools: BSD, GNU, and BusyBox](https://img.shields.io/badge/tools-BSD%20%C2%B7%20GNU%20%C2%B7%20BusyBox-lightgrey) [![ShellCheck](https://github.com/kalavattam/ctb_helper/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/kalavattam/ctb_helper/actions/workflows/shellcheck.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![tests][badge-tests]][run-tests] [![ShellCheck][badge-shellcheck]][run-shellcheck] [![license: MIT][badge-license]](LICENSE)
+
+![Bash 3.2+, tested on 3.2, 4.4, and 5][badge-bash] ![Platforms: macOS and Windows (Git Bash, WSL)][badge-platforms] ![Tools: BSD, GNU, and BusyBox][badge-tools]
 
 `ctb_helper.sh` starts and stops groups of [Cold Turkey Blocker](https://getcoldturkey.com) blocks from a Bash command line on macOS or Windows, so that one command, keyboard shortcut, or button can turn on a preset (see below). It wraps the program’s own command-line interface and adds named presets, locks that end at a given time, and a macOS notification that lists the blocks that started.
 
@@ -96,3 +98,12 @@ bash dev/tools/format_md_quotes.sh --write README.md
 ## Authorship and AI assistance attribution
 - Director, responsible author, and maintainer: Kris Alavattam.
 - Code, documentation, and related materials are planned, designed, developed, reviewed, revised, and maintained with AI assistance from Claude Code (Anthropic; Opus 5.5). All AI-assisted output is reviewed, edited, and approved by the author.
+
+[badge-tests]: https://github.com/kalavattam/ctb_helper/actions/workflows/test.yml/badge.svg
+[run-tests]: https://github.com/kalavattam/ctb_helper/actions/workflows/test.yml
+[badge-shellcheck]: https://github.com/kalavattam/ctb_helper/actions/workflows/shellcheck.yml/badge.svg
+[run-shellcheck]: https://github.com/kalavattam/ctb_helper/actions/workflows/shellcheck.yml
+[badge-license]: https://img.shields.io/badge/license-MIT-yellow
+[badge-bash]: https://img.shields.io/badge/Bash-3.2%2B%20%28tested%203.2%20%C2%B7%204.4%20%C2%B7%205%29-4EAA25?logo=gnubash&logoColor=white
+[badge-platforms]: https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%28Git%20Bash%2C%20WSL%29-lightgrey
+[badge-tools]: https://img.shields.io/badge/tools-BSD%20%C2%B7%20GNU%20%C2%B7%20BusyBox-lightgrey
