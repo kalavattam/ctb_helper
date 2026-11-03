@@ -130,6 +130,24 @@ function has_test() {
 }
 
 
+# Generate the fixture set in 'tests/fixtures/<nam>/' with its 'make.sh' when
+# its last-written output, 'sentinel', is missing.
+function ensure_fixture() {
+    local nam="${1}"
+    local sentinel="${2}"
+    local dir_fix="${repo_root}/tests/fixtures/${nam}"
+
+    if [[ -f "${dir_fix}/${sentinel}" ]]; then
+        return 0
+    fi
+
+    echo "note(run_tests.sh):" \
+        "generating ${nam} fixtures."
+    "${TEST_BASH}" "${dir_fix}/make.sh" \
+        || die "fixture generation failed: '${nam}'."
+}
+
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd)"
 list_only=0
 arr_group=()
@@ -228,14 +246,9 @@ bash_version="$("${TEST_BASH}" -c 'echo "${BASH_VERSION}"')"
 echo "note(run_tests.sh):" \
     "testing with Bash '${bash_version}' at '${TEST_BASH}'."
 
-# Generate the fixtures when their last-written output is missing.
-dir_fix="${repo_root}/tests/fixtures/ctb_helper"
-if [[ ! -f "${dir_fix}/format/expected.txt" ]]; then
-    echo "note(run_tests.sh):" \
-        "generating ctb_helper fixtures."
-    "${TEST_BASH}" "${dir_fix}/make.sh" \
-        || die "fixture generation failed."
-fi
+# Generate each fixture set whose last-written output is missing.
+ensure_fixture ctb_helper tool/editor
+ensure_fixture format_md_quotes format/expected.txt
 
 passed=0
 failed=0

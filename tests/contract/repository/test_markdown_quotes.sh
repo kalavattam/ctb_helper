@@ -75,13 +75,14 @@ function assert_same_bytes() {
 
 setup_test_env
 tool="${ROOT_REPO}/dev/tools/format_md_quotes.sh"
-fil_input="${DIR_FIX}/format/input.txt"
-fil_expected="${DIR_FIX}/format/expected.txt"
+dir_fix_quotes="${TEST_DIR}/fixtures/format_md_quotes"
+fil_input="${dir_fix_quotes}/format/input.txt"
+fil_expected="${dir_fix_quotes}/format/expected.txt"
 
 if [[ ! -f "${fil_expected}" ]]; then
     fail_precondition \
         "the 'format/' fixtures are missing; run" \
-        "'bash tests/fixtures/ctb_helper/make.sh'."
+        "'bash tests/fixtures/format_md_quotes/make.sh'."
 fi
 
 print_section "checking"
@@ -190,7 +191,8 @@ while IFS= read -r fil; do
 done < <(
     find "${ROOT_REPO}" \
         \( -path "${ROOT_REPO}/.git" -o -path "${ROOT_REPO}/artifacts" \) \
-        -prune -o -type f -name '*.md' -print | LC_ALL=C sort
+        -prune -o -type f -name '*.md' -print \
+        | LC_ALL=C sort
 )
 
 # Prove that the scan inspected files rather than passing vacuously.

@@ -5,11 +5,13 @@ Tests are classified by what they prove, following the layers in the `protocol_c
 ```text
 tests/
 ├── contract/
-│   ├── interfaces/       command-line behavior of ctb_helper.sh
-│   └── repository/       shell source checks across the repository
-├── fixtures/ctb_helper/  recipe and documentation for generated presets and stubs
-├── support/              shared test harness
-└── run_tests.sh          canonical runner
+│   ├── interfaces/         command-line behavior of ctb_helper.sh
+│   └── repository/         shell and Markdown source checks across the repository
+├── fixtures/
+│   ├── ctb_helper/         recipe and documentation for generated presets and stubs
+│   └── format_md_quotes/   recipe and documentation for a quote-conversion pair
+├── support/                shared test harness
+└── run_tests.sh            canonical runner
 ```
 
 <br />
@@ -42,9 +44,10 @@ Logs and scratch files go to `artifacts/tests/`, which Git ignores. Set `TEST_AR
 <br />
 
 ## Fixtures and stubs
-`tests/fixtures/ctb_helper/make.sh` generates the presets files and the command stubs that the tests use; [`fixtures/ctb_helper/README.md`](fixtures/ctb_helper/README.md) lists them. The runner generates them when they are missing, and you can regenerate them at any time:
+Each fixture set has its own `make.sh` and `README.md`. `tests/fixtures/ctb_helper/make.sh` generates the presets files and the command stubs that the `ctb_helper.sh` tests use, and `tests/fixtures/format_md_quotes/make.sh` generates the input and expected output for `format_md_quotes.sh`; [`fixtures/ctb_helper/README.md`](fixtures/ctb_helper/README.md) and [`fixtures/format_md_quotes/README.md`](fixtures/format_md_quotes/README.md) list them. The runner generates a set when it is missing, and you can regenerate either at any time:
 ```bash
 bash tests/fixtures/ctb_helper/make.sh
+bash tests/fixtures/format_md_quotes/make.sh
 ```
 
 Every test puts the stubs first on `PATH` and sets `CTB_BIN` to the Cold Turkey stub, so the suite never runs a real Cold Turkey install, shows a real notification, or opens a real editor.

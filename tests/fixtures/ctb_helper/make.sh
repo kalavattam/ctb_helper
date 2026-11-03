@@ -31,17 +31,15 @@ set -euo pipefail
 
 
 # Resolve generated paths relative to this fixture root. 'presets/' holds
-# presets files, 'tool/' holds stubs for Cold Turkey, 'date', 'osascript', and
-# an editor, and 'format/' holds an input and expected output for
-# 'format_md_quotes.sh'.
+# presets files, and 'tool/' holds stubs for Cold Turkey, 'date', 'osascript',
+# and an editor.
 dir_fix="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_pre="${dir_fix}/presets"
 dir_tol="${dir_fix}/tool"
-dir_fmt="${dir_fix}/format"
 
 # Remove stale outputs so that regeneration is idempotent.
-rm -rf "${dir_pre}" "${dir_tol}" "${dir_fmt}"
-mkdir -p "${dir_pre}" "${dir_tol}" "${dir_fmt}"
+rm -rf "${dir_pre}" "${dir_tol}"
+mkdir -p "${dir_pre}" "${dir_tol}"
 
 
 # Write a well-formed presets file.
@@ -129,49 +127,3 @@ chmod +x \
     "${dir_tol}/date" \
     "${dir_tol}/osascript" \
     "${dir_tol}/editor"
-
-
-# Write Markdown with straight quotes in prose, in code, in link targets, in
-# HTML, in a fence, and in a reference definition, ending without a line feed.
-# The delimiter is quoted because the body holds backticks and backslashes that
-# must reach the file as written.
-cat > "${dir_fmt}/input.txt" << 'EOM'
-# Heading with "double" and 'single' quotes
-Plain "double quotes" and 'single quotes' in prose.
-Apostrophes: Kris's repo, don't, it's.
-Quote after bracket ("inside") and ['inside'].
-Inline code keeps `"straight"` and `'straight'` quotes, and ``a `"b"` c``.
-Escaped \"quotes\" stay straight.
-A [link "text"](https://example.com/a'b "title") and <a id="x"></a>.
-Already curly “double” and ‘single’ quotes stay; a dash —"quoted" opens.
-- List item with "quotes".
-| Cell "one" | Cell 'two' |
-
-```bash
-echo "fenced code keeps 'quotes'"
-```
-
-[ref]: https://example.com "Reference title"
-EOM
-printf '%s' 'last "line" without newline' >> "${dir_fmt}/input.txt"
-
-# Write the expected conversion of 'input.txt', authored by hand.
-cat > "${dir_fmt}/expected.txt" << 'EOM'
-# Heading with “double” and ‘single’ quotes
-Plain “double quotes” and ‘single quotes’ in prose.
-Apostrophes: Kris’s repo, don’t, it’s.
-Quote after bracket (“inside”) and [‘inside’].
-Inline code keeps `"straight"` and `'straight'` quotes, and ``a `"b"` c``.
-Escaped \"quotes\" stay straight.
-A [link “text”](https://example.com/a'b "title") and <a id="x"></a>.
-Already curly “double” and ‘single’ quotes stay; a dash —“quoted” opens.
-- List item with “quotes”.
-| Cell “one” | Cell ‘two’ |
-
-```bash
-echo "fenced code keeps 'quotes'"
-```
-
-[ref]: https://example.com "Reference title"
-EOM
-printf '%s' 'last “line” without newline' >> "${dir_fmt}/expected.txt"
